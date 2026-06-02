@@ -73,7 +73,7 @@ pub async fn get_post(
     State(pool): State<MongoDatabase>,
     Query(params): Query<PostParams>,
 ) -> Result<Json<AllPostDataSomeFriend>, PYQError> {
-    let friend = match params.link {
+    let (friend, search_domain) = match params.link {
         Some(link) => {
             let domain_str = match Url::parse(&link) {
                 Ok(v) => match v.host_str() {
@@ -82,11 +82,44 @@ pub async fn get_post(
                 },
                 Err(e) => return Err(PYQError::QueryParamsError(e.to_string())),
             };
-            // println!("{}", domain_str);
 
+            // 先尝试在 friends 表中查找
             match mongo::select_one_from_friends_with_linklike(&pool, &domain_str).await {
-                Ok(v) => v,
-                Err(e) => return Err(PYQError::QueryDataBaseError(e.to_string())),
+                Ok(v) => (v, domain_str),
+                Err(_) => {
+                    // friends 表中找不到（可能是换域名了），尝试用域名直接匹配 posts 表
+                    let posts = match mongo::select_all_from_posts_with_linklike(
+                        &pool,
+                        &domain_str,
+                        1,
+                        "created",
+                    )
+                    .await
+                    {
+                        Ok(v) if !v.is_empty() => v,
+                        _ => {
+                            return Err(PYQError::QueryDataBaseError(format!(
+                                "未找到域名 {} 对应的友链或文章",
+                                domain_str
+                            )));
+                        }
+                    };
+                    // 通过 posts 中的 author 名字找到对应的 friend
+                    let author = &posts[0].author;
+                    let friends = match mongo::select_all_from_friends(&pool).await {
+                        Ok(v) => v,
+                        Err(e) => return Err(PYQError::QueryDataBaseError(e.to_string())),
+                    };
+                    match friends.into_iter().find(|f| &f.name == author) {
+                        Some(f) => (f, domain_str),
+                        None => {
+                            return Err(PYQError::QueryDataBaseError(format!(
+                                "未找到域名 {} 对应的友链",
+                                domain_str
+                            )));
+                        }
+                    }
+                }
             }
         }
         None => {
@@ -97,7 +130,13 @@ pub async fn get_post(
             };
             let mut rng = rand::rng();
             match friends.choose(&mut rng).cloned() {
-                Some(f) => f,
+                Some(f) => {
+                    let domain = match Url::parse(&f.link) {
+                        Ok(v) => v.host_str().unwrap_or_default().to_string(),
+                        Err(_) => f.link.clone(),
+                    };
+                    (f, domain)
+                }
                 None => {
                     return Err(PYQError::QueryDataBaseError(String::from(
                         "friends表数据为空",
@@ -106,9 +145,10 @@ pub async fn get_post(
             }
         }
     };
+    // 使用域名匹配 posts 表，而不是完整的 friend.link URL
     let posts = match mongo::select_all_from_posts_with_linklike(
         &pool,
-        &friend.link,
+        &search_domain,
         params.num.unwrap_or(-1),
         &params.sort_rule.unwrap_or(String::from("created")),
     )

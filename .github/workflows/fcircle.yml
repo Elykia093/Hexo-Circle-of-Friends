@@ -1,0 +1,32 @@
+name: Github
+on:
+  fork:
+  watch:
+    types: [started]
+jobs:
+  activity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dawidd6/action-send-mail@v3
+        if: github.event_name == 'fork'
+        with:
+          server_address: ${{ secrets.EMAIL_SERVER }}
+          server_port: ${{ secrets.EMAIL_PORT }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Fcircle"
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
+          body: 🍴 ${{ github.event.sender.login }} ${{ github.event.forkee.full_name }}
+
+      - uses: dawidd6/action-send-mail@v3
+        if: github.event_name == 'watch'
+        with:
+          server_address: ${{ secrets.EMAIL_SERVER }}
+          server_port: ${{ secrets.EMAIL_PORT }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Fcircle"
+          to: ${{ secrets.EMAIL_TO }}
+          from: ${{ secrets.EMAIL_FROM }}
+          body: ⭐ ${{ github.event.sender.login }}

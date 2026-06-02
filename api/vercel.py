@@ -210,7 +210,7 @@ class IndexResponse(BaseModel):
 app = FastAPI(
     title="Hexo Circle of Friends API",
     description="文章和朋友管理API，支持AI生成的文章摘要功能。\n\n支持多种数据库：SQLite、MySQL、MongoDB",
-    version="6.0.5",
+    version="6.0.6",
     docs_url="/docs",
     redoc_url="/redoc",
     contact={

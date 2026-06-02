@@ -16,13 +16,15 @@ def query_all(li, start: int = 0, end: int = 0, rule: str = "updated"):
     if rule != "created" and rule != "updated":
         return {"message": "rule error, please use 'created'/'updated'"}
     # 使用LEFT JOIN查询文章和摘要
-    if start == 0 and end == 0:
+    if end <= 0 or end <= start:
         posts_with_summary = (
             session.query(Post, ArticleSummary)
             .outerjoin(ArticleSummary, Post.link == ArticleSummary.link)
             .order_by(desc(getattr(Post, rule)))
-            .all()
         )
+        if start > 0:
+            posts_with_summary = posts_with_summary.offset(start)
+        posts_with_summary = posts_with_summary.all()
     else:
         posts_with_summary = (
             session.query(Post, ArticleSummary)
@@ -176,6 +178,19 @@ def query_post(
             .filter(Friend.link.like("%{:s}%".format(domain)))
             .first()
         )
+        # 如果 friends 表中找不到（可能是换域名了），尝试通过 posts 表反查
+        if user is None:
+            sample_post = (
+                session.query(Post)
+                .filter(Post.link.like("%{:s}%".format(domain)))
+                .first()
+            )
+            if sample_post is not None:
+                user = (
+                    session.query(Friend)
+                    .filter(Friend.name == sample_post.author)
+                    .first()
+                )
 
     posts = (
         session.query(Post)

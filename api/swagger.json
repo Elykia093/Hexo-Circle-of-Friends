@@ -11,7 +11,7 @@
       "name": "Apache 2.0",
       "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
     },
-    "version": "6.0.5"
+    "version": "6.0.6"
   },
   "paths": {
     "/all": {
@@ -672,6 +672,34 @@
         }
       }
     },
+    "/": {
+      "get": {
+        "tags": [
+          "SYSTEM"
+        ],
+        "summary": "服务状态",
+        "description": "返回服务运行状态信息",
+        "operationId": "index__get",
+        "responses": {
+          "200": {
+            "description": "服务运行正常",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexResponse"
+                },
+                "example": {
+                  "message": "服务运行正常",
+                  "version": "6.0.5",
+                  "docs": "/docs",
+                  "database": "sqlite"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/version": {
       "get": {
         "tags": [
@@ -903,6 +931,43 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IndexResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "服务状态消息",
+            "example": "服务运行正常"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "当前版本号",
+            "example": "6.0.5"
+          },
+          "docs": {
+            "type": "string",
+            "title": "Docs",
+            "description": "API 文档链接",
+            "example": "/docs"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database",
+            "description": "数据库类型",
+            "example": "sqlite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "version",
+          "docs",
+          "database"
+        ],
+        "title": "IndexResponse",
+        "description": "首页响应模型"
       },
       "NotFoundResponse": {
         "properties": {
